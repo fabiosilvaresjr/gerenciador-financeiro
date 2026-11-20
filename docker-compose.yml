@@ -1,11 +1,15 @@
+# Credenciais vêm das variáveis DB_USER/DB_PASSWORD (as mesmas do backend).
+# Suba o banco a partir da raiz do repositório com:
+#   docker compose --env-file backend-financas/.env up -d
 services:
   db:
     image: postgres:16
     container_name: financas-db
     restart: always
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
+      # ":?" faz o compose parar com erro claro se a variável não estiver definida
+      POSTGRES_USER: ${DB_USER:?defina DB_USER no backend-financas/.env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no backend-financas/.env}
       POSTGRES_DB: financas
     ports:
       - "5432:5432"
