@@ -1,0 +1,9 @@
+# Arquivos pessoais do Claude Code
+CLAUDE.local.md
+.claude/settings.local.json
+
+# IDE (workspace.xml guarda as variáveis das Run Configurations)
+.idea/
+
+# Segredos locais
+.env
