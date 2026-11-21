@@ -1,7 +1,7 @@
 # Gerenciador de Finanças
 
 API REST para controle de finanças pessoais (categorias, transações de receita/despesa e usuários com login JWT).
-Hoje existe só o back-end; o front-end Angular e o restante do MVP estão descritos em [`PLANO.md`](PLANO.md) como meta futura.
+Hoje existe só o back-end; o front-end Angular e o restante do MVP estão planejados.
 
 ## Stack
 
