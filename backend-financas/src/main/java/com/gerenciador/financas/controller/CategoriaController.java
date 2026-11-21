@@ -3,13 +3,18 @@ package com.gerenciador.financas.controller;
 import com.gerenciador.financas.dto.CategoriaRequestDTO;
 import com.gerenciador.financas.dto.CategoriaResponseDTO;
 import com.gerenciador.financas.service.CategoriaService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/categorias")
@@ -44,5 +49,19 @@ public class CategoriaController {
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
         categoriaService.deletar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // Sem este handler, o Spring devolveria o 409 sem a mensagem (server.error.include-message=never).
+    // Provisório: o tratamento global de erros (@RestControllerAdvice) vai absorver isto.
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> erroDeStatus(ResponseStatusException e, HttpServletRequest request) {
+        HttpStatus status = HttpStatus.valueOf(e.getStatusCode().value());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", status.value());
+        body.put("error", status.getReasonPhrase());
+        body.put("message", e.getReason());
+        body.put("path", request.getServletPath());
+        return ResponseEntity.status(status).body(body);
     }
 }

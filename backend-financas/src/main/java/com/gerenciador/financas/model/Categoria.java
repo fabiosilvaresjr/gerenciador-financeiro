@@ -22,7 +22,9 @@ public class Categoria {
     @Column(nullable = false, length = 100)
     private String nome;
 
-    @OneToMany(mappedBy = "categoria", cascade = CascadeType.ALL, orphanRemoval = true)
+    // Sem cascade/orphanRemoval: excluir uma categoria nunca pode apagar as transações dela.
+    // A regra de negócio (409 se houver transações) fica no CategoriaService.
+    @OneToMany(mappedBy = "categoria")
     @Builder.Default
     private List<Transacao> transacoes = new ArrayList<>();
 }
