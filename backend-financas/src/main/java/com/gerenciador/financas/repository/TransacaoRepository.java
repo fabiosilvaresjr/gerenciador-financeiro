@@ -6,4 +6,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface TransacaoRepository extends JpaRepository<Transacao, Long> {
+
+    // Consulta derivada do nome: "existe alguma transação com categoria.id = ?"
+    boolean existsByCategoriaId(Long categoriaId);
 }

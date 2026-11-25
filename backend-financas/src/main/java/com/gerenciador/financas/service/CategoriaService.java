@@ -4,10 +4,13 @@ import com.gerenciador.financas.dto.CategoriaRequestDTO;
 import com.gerenciador.financas.dto.CategoriaResponseDTO;
 import com.gerenciador.financas.model.Categoria;
 import com.gerenciador.financas.repository.CategoriaRepository;
+import com.gerenciador.financas.repository.TransacaoRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,6 +20,7 @@ import java.util.stream.Collectors;
 public class CategoriaService {
 
     private final CategoriaRepository categoriaRepository;
+    private final TransacaoRepository transacaoRepository;
 
     @Transactional(readOnly = true)
     public List<CategoriaResponseDTO> listar() {
@@ -54,6 +58,10 @@ public class CategoriaService {
     public void deletar(Long id) {
         if (!categoriaRepository.existsById(id)) {
             throw new EntityNotFoundException("Categoria não encontrada com o ID: " + id);
+        }
+        if (transacaoRepository.existsByCategoriaId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A categoria possui transações e não pode ser excluída. Arquive a categoria em vez de excluí-la.");
         }
         categoriaRepository.deleteById(id);
     }
