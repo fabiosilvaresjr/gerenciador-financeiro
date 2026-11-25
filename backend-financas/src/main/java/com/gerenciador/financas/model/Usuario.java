@@ -6,8 +6,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -18,7 +19,11 @@ import java.util.Set;
            @UniqueConstraint(columnNames = "username"),
            @UniqueConstraint(columnNames = "email")
        })
-@Data
+// @Getter/@Setter em vez de @Data: o equals/hashCode/toString gerados pelo @Data
+// percorreriam a coleção LAZY "roles" (LazyInitializationException fora da transação)
+// e o toString ainda exporia o hash da senha em logs.
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
