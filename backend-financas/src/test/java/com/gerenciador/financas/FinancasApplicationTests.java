@@ -1,10 +1,10 @@
 package com.gerenciador.financas;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class FinancasApplicationTests {
+// Herda a configuração dos testes de integração (PostgreSQL no Testcontainers),
+// então também não depende mais do banco local.
+class FinancasApplicationTests extends IntegracaoTestBase {
 
 	@Test
 	void contextLoads() {

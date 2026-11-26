@@ -9,6 +9,7 @@ Hoje existe só o back-end; o front-end Angular e o restante do MVP estão plane
 - JWT com jjwt 0.11.5 (HS256), senhas com BCrypt
 - PostgreSQL 16 via Docker Compose, schema versionado com Flyway (`ddl-auto=validate`)
 - Lombok
+- Testes de integração com JUnit 5, MockMvc e Testcontainers (PostgreSQL 16)
 
 ## Estrutura
 
@@ -127,10 +128,26 @@ Categorias e transações ainda não pertencem a um usuário: todo usuário loga
 
 ## Testes
 
-Em `backend-financas/`, com o banco no ar e o `.env` preenchido:
+Os testes de integração usam **Testcontainers**: cada execução sobe um PostgreSQL 16 descartável no Docker,
+roda as migrations do Flyway nele e o remove no final. Basta o **Docker rodando**. Não é preciso subir o banco
+do `docker compose` nem preencher o `.env`, porque os testes usam um segredo JWT próprio.
+
+Em `backend-financas/`:
 
 ```bash
-./mvnw verify
+./mvnw verify                                  # build + todos os testes
+./mvnw test -Dtest=CategoriaIntegracaoTest     # uma classe
+./mvnw test -Dtest=AuthIntegracaoTest#loginComSenhaErradaResponde401   # um teste
 ```
 
-Hoje há só um teste que sobe o contexto do Spring contra o PostgreSQL local (não usa H2 nem Testcontainers).
+Na primeira execução o Docker baixa a imagem `postgres:16`, então demora um pouco mais.
+
+O que é coberto (`src/test/java/.../controller/`):
+
+- `AuthIntegracaoTest`: cadastro (201, 409 username/email repetido, 400 com a lista `campos`), login (200 com token,
+  401 senha errada ou usuário inexistente) e acesso a rota protegida sem token, com token inválido e com token válido.
+- `CategoriaIntegracaoTest` e `TransacaoIntegracaoTest`: CRUD completo, 404 para ID inexistente, 400 de validação,
+  409 ao excluir categoria com transações (e a transação continua existindo) e 404 ao criar transação com categoria inexistente.
+
+A configuração comum (container, propriedades, limpeza das tabelas antes de cada teste e atalhos como
+`registrarELogar`) fica em `IntegracaoTestBase`.
