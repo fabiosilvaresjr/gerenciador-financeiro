@@ -3,6 +3,7 @@ package com.gerenciador.financas.service;
 import com.gerenciador.financas.dto.CategoriaRequestDTO;
 import com.gerenciador.financas.dto.CategoriaResponseDTO;
 import com.gerenciador.financas.model.Categoria;
+import com.gerenciador.financas.model.Usuario;
 import com.gerenciador.financas.repository.CategoriaRepository;
 import com.gerenciador.financas.repository.TransacaoRepository;
 import com.gerenciador.financas.repository.UsuarioRepository;
@@ -24,6 +25,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class CategoriaService {
+
+    /** Categorias que todo usuário novo ganha no cadastro (lista definida em 2026-11-26). */
+    public static final List<String> CATEGORIAS_PADRAO = List.of(
+            "Alimentação", "Moradia", "Transporte", "Saúde", "Educação", "Lazer", "Salário", "Outros");
 
     private final CategoriaRepository categoriaRepository;
     private final TransacaoRepository transacaoRepository;
@@ -50,6 +55,19 @@ public class CategoriaService {
                 .build();
         Categoria salva = categoriaRepository.save(categoria);
         return CategoriaResponseDTO.fromEntity(salva);
+    }
+
+    /**
+     * Cria as categorias padrão do usuário recém-cadastrado. É chamado pelo AuthService.registrar e
+     * entra na mesma transação dele (propagação padrão REQUIRED): se algo falhar aqui, o cadastro do
+     * usuário também é desfeito, e nunca fica um usuário sem as categorias.
+     */
+    @Transactional
+    public void criarCategoriasPadrao(Usuario usuario) {
+        List<Categoria> categorias = CATEGORIAS_PADRAO.stream()
+                .map(nome -> Categoria.builder().nome(nome).usuario(usuario).build())
+                .collect(Collectors.toList());
+        categoriaRepository.saveAll(categorias);
     }
 
     @Transactional
