@@ -4,8 +4,8 @@ import com.gerenciador.financas.dto.TransacaoRequestDTO;
 import com.gerenciador.financas.dto.TransacaoResponseDTO;
 import com.gerenciador.financas.model.Categoria;
 import com.gerenciador.financas.model.Transacao;
-import com.gerenciador.financas.repository.CategoriaRepository;
 import com.gerenciador.financas.repository.TransacaoRepository;
+import com.gerenciador.financas.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,31 +14,35 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Todos os métodos recebem o ID do usuário logado (vindo do token) e só trabalham com as
+ * transações dele. A transação de outro usuário é tratada como inexistente (404), e a categoria
+ * informada também precisa ser do usuário.
+ */
 @Service
 @RequiredArgsConstructor
 public class TransacaoService {
 
     private final TransacaoRepository transacaoRepository;
-    private final CategoriaRepository categoriaRepository;
+    private final CategoriaService categoriaService;
+    private final UsuarioRepository usuarioRepository;
 
     @Transactional(readOnly = true)
-    public List<TransacaoResponseDTO> listar() {
-        return transacaoRepository.findAll().stream()
+    public List<TransacaoResponseDTO> listar(Long usuarioId) {
+        return transacaoRepository.findByUsuarioId(usuarioId).stream()
                 .map(TransacaoResponseDTO::fromEntity)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public TransacaoResponseDTO buscarPorId(Long id) {
-        Transacao transacao = transacaoRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Transação não encontrada com o ID: " + id));
-        return TransacaoResponseDTO.fromEntity(transacao);
+    public TransacaoResponseDTO buscarPorId(Long id, Long usuarioId) {
+        return TransacaoResponseDTO.fromEntity(buscarDoUsuario(id, usuarioId));
     }
 
     @Transactional
-    public TransacaoResponseDTO criar(TransacaoRequestDTO dto) {
-        Categoria categoria = categoriaRepository.findById(dto.getCategoriaId())
-                .orElseThrow(() -> new EntityNotFoundException("Categoria não encontrada com o ID: " + dto.getCategoriaId()));
+    public TransacaoResponseDTO criar(TransacaoRequestDTO dto, Long usuarioId) {
+        // Categoria de outro usuário → 404, igual a uma categoria que não existe.
+        Categoria categoria = categoriaService.buscarDoUsuario(dto.getCategoriaId(), usuarioId);
 
         Transacao transacao = Transacao.builder()
                 .descricao(dto.getDescricao())
@@ -46,6 +50,7 @@ public class TransacaoService {
                 .data(dto.getData())
                 .tipo(dto.getTipo())
                 .categoria(categoria)
+                .usuario(usuarioRepository.getReferenceById(usuarioId))
                 .build();
 
         Transacao salva = transacaoRepository.save(transacao);
@@ -53,12 +58,9 @@ public class TransacaoService {
     }
 
     @Transactional
-    public TransacaoResponseDTO atualizar(Long id, TransacaoRequestDTO dto) {
-        Transacao transacao = transacaoRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Transação não encontrada com o ID: " + id));
-
-        Categoria categoria = categoriaRepository.findById(dto.getCategoriaId())
-                .orElseThrow(() -> new EntityNotFoundException("Categoria não encontrada com o ID: " + dto.getCategoriaId()));
+    public TransacaoResponseDTO atualizar(Long id, TransacaoRequestDTO dto, Long usuarioId) {
+        Transacao transacao = buscarDoUsuario(id, usuarioId);
+        Categoria categoria = categoriaService.buscarDoUsuario(dto.getCategoriaId(), usuarioId);
 
         transacao.setDescricao(dto.getDescricao());
         transacao.setValor(dto.getValor());
@@ -71,10 +73,12 @@ public class TransacaoService {
     }
 
     @Transactional
-    public void deletar(Long id) {
-        if (!transacaoRepository.existsById(id)) {
-            throw new EntityNotFoundException("Transação não encontrada com o ID: " + id);
-        }
-        transacaoRepository.deleteById(id);
+    public void deletar(Long id, Long usuarioId) {
+        transacaoRepository.delete(buscarDoUsuario(id, usuarioId));
+    }
+
+    private Transacao buscarDoUsuario(Long id, Long usuarioId) {
+        return transacaoRepository.findByIdAndUsuarioId(id, usuarioId)
+                .orElseThrow(() -> new EntityNotFoundException("Transação não encontrada com o ID: " + id));
     }
 }
