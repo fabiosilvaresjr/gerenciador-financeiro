@@ -18,7 +18,7 @@ Hoje existe só o back-end; o front-end Angular e o restante do MVP estão plane
 docker-compose.yml         # PostgreSQL 16 (banco "financas")
 backend-financas/          # API Spring Boot
   .env.example             # modelo do .env (segredos locais, fora do Git)
-  src/main/resources/db/migration/   # migrations Flyway (V1, V2)
+  src/main/resources/db/migration/   # migrations Flyway (V1 a V3)
 ```
 
 ## 1. Configurar o `.env`
@@ -81,6 +81,9 @@ Em `backend-financas/` (o banco precisa estar no ar):
 A API sobe em `http://localhost:8080`. O Flyway aplica as migrations na primeira execução
 (tabelas `categoria`, `transacao`, `usuarios`, `roles`, `usuario_roles` e os papéis `ROLE_USER`/`ROLE_ADMIN`).
 
+> A migration V3 dá um dono (`usuario_id`) a categorias e transações e, para isso, **apaga as categorias e
+> transações que já existiam** no banco (eram só dados de teste). Os usuários continuam.
+
 > Se aparecer `class file version 65.0 ... up to 61.0`, o `java` do terminal não é o 21. Rode com
 > `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./mvnw spring-boot:run` (ajuste o caminho do seu JDK 21).
 
@@ -125,7 +128,9 @@ Senha errada no login também retorna `401`. O token expira em 24 h (`financas.a
 | `GET`, `POST` | `/api/transacoes` | token |
 | `GET`, `PUT`, `DELETE` | `/api/transacoes/{id}` | token |
 
-Categorias e transações ainda não pertencem a um usuário: todo usuário logado vê os mesmos dados.
+Categorias e transações pertencem ao usuário do token: cada um só lista, lê, altera e apaga os próprios dados.
+O ID de outro usuário responde `404`, igual a um ID que não existe. A categoria de uma transação também tem
+que ser do mesmo usuário (senão, `404`).
 
 ## Testes
 
@@ -149,6 +154,9 @@ O que é coberto (`src/test/java/.../controller/`):
   401 senha errada ou usuário inexistente) e acesso a rota protegida sem token, com token inválido e com token válido.
 - `CategoriaIntegracaoTest` e `TransacaoIntegracaoTest`: CRUD completo, 404 para ID inexistente, 400 de validação,
   409 ao excluir categoria com transações (e a transação continua existindo) e 404 ao criar transação com categoria inexistente.
+- `IsolamentoIntegracaoTest`: o usuário B não vê os dados do usuário A na listagem e recebe 404 ao ler, alterar ou
+  apagar a categoria ou a transação de A, ou ao usar a categoria de A numa transação. Depois de cada tentativa, o teste
+  confere com o token de A que os dados dele continuam iguais.
 
 A configuração comum (container, propriedades, limpeza das tabelas antes de cada teste e atalhos como
 `registrarELogar`) fica em `IntegracaoTestBase`.
@@ -167,14 +175,14 @@ código-fonte, com as linhas cobertas em verde, as não cobertas em vermelho e o
 Na mesma pasta ficam `jacoco.xml` e `jacoco.csv`, para ferramentas. O código gerado pelo Lombok fica fora da conta
 (`lombok.config`).
 
-Números atuais (2026-11-26, 31 testes):
+Números atuais (2026-11-27, 42 testes):
 
 | Métrica | Cobertura |
 |---|---|
-| Linhas | 96% (220/229) |
-| Branches | 69% (18/26) |
-| Métodos | 94% (74/79) |
-| Instruções | 95% (964/1015) |
+| Linhas | 96% (215/224) |
+| Branches | 64% (14/22) |
+| Métodos | 95% (73/77) |
+| Instruções | 96% (959/1003) |
 
 No GitHub Actions o mesmo relatório é publicado como artefato `relatorio-jacoco` em cada execução do workflow
 (aba **Actions** → execução → **Artifacts**).

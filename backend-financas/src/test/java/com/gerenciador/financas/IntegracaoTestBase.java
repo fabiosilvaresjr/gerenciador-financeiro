@@ -54,8 +54,9 @@ public abstract class IntegracaoTestBase {
     @Autowired
     protected MockMvc mockMvc;
 
+    // protected: alguns testes conferem o banco direto, sem passar pela API.
     @Autowired
-    private JdbcTemplate jdbcTemplate;
+    protected JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void limparBanco() {
