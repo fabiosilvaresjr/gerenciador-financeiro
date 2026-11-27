@@ -14,9 +14,10 @@ Hoje existe só o back-end; o front-end Angular e o restante do MVP estão plane
 ## Estrutura
 
 ```
-docker-compose.yml     # PostgreSQL 16 (banco "financas")
-backend-financas/      # API Spring Boot
-  .env.example         # modelo do .env (segredos locais, fora do Git)
+.github/workflows/ci.yml   # CI: ./mvnw verify em cada PR e push na main
+docker-compose.yml         # PostgreSQL 16 (banco "financas")
+backend-financas/          # API Spring Boot
+  .env.example             # modelo do .env (segredos locais, fora do Git)
   src/main/resources/db/migration/   # migrations Flyway (V1, V2)
 ```
 
@@ -151,3 +152,29 @@ O que é coberto (`src/test/java/.../controller/`):
 
 A configuração comum (container, propriedades, limpeza das tabelas antes de cada teste e atalhos como
 `registrarELogar`) fica em `IntegracaoTestBase`.
+
+## Cobertura de testes (JaCoCo)
+
+O plugin do JaCoCo está ligado ao `verify`: o `prepare-agent` acompanha quais linhas os testes executam e o
+`report` gera o relatório no final. Em `backend-financas/`:
+
+```bash
+./mvnw verify
+```
+
+Abra `backend-financas/target/site/jacoco/index.html` no navegador. Dá para navegar por pacote e classe até o
+código-fonte, com as linhas cobertas em verde, as não cobertas em vermelho e os `if` cobertos pela metade em amarelo.
+Na mesma pasta ficam `jacoco.xml` e `jacoco.csv`, para ferramentas. O código gerado pelo Lombok fica fora da conta
+(`lombok.config`).
+
+Números atuais (2026-11-26, 31 testes):
+
+| Métrica | Cobertura |
+|---|---|
+| Linhas | 96% (220/229) |
+| Branches | 69% (18/26) |
+| Métodos | 94% (74/79) |
+| Instruções | 95% (964/1015) |
+
+No GitHub Actions o mesmo relatório é publicado como artefato `relatorio-jacoco` em cada execução do workflow
+(aba **Actions** → execução → **Artifacts**).
