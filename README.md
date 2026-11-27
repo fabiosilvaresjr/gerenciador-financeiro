@@ -152,6 +152,8 @@ O que é coberto (`src/test/java/.../controller/`):
 
 - `AuthIntegracaoTest`: cadastro (201, 409 username/email repetido, 400 com a lista `campos`), login (200 com token,
   401 senha errada ou usuário inexistente) e acesso a rota protegida sem token, com token inválido e com token válido.
+- `FiltroJwtIntegracaoTest`: token expirado, token assinado com outra chave, token válido de um usuário que não existe
+  mais e header `Authorization` sem o prefixo `Bearer` (token puro ou `Basic`): todos respondem 401 com o corpo JSON padrão.
 - `CategoriaIntegracaoTest` e `TransacaoIntegracaoTest`: CRUD completo, 404 para ID inexistente, 400 de validação,
   409 ao excluir categoria com transações (e a transação continua existindo) e 404 ao criar transação com categoria inexistente.
 - `IsolamentoIntegracaoTest`: o usuário B não vê os dados do usuário A na listagem e recebe 404 ao ler, alterar ou
