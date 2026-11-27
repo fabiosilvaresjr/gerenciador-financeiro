@@ -1,0 +1,38 @@
+name: CI
+
+# Quando rodar: a cada pull request e a cada push (ex.: merge) na main
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# O token do GitHub só precisa ler o código
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest  # já vem com Docker, que o Testcontainers usa
+    defaults:
+      run:
+        working-directory: backend-financas  # vale só para os passos "run"
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v7
+
+      - name: Instalar o JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven  # reaproveita as dependências do ~/.m2 entre execuções
+
+      - name: Build e testes (./mvnw verify)
+        run: ./mvnw -B verify
+
+      - name: Publicar o relatório do JaCoCo
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorio-jacoco
+          path: backend-financas/target/site/jacoco/  # relativo à raiz do repositório
