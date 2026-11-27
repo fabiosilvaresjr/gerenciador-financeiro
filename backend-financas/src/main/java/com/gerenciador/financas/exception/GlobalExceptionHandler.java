@@ -52,7 +52,7 @@ public class GlobalExceptionHandler {
     // 401: username ou senha errados no login (o AuthenticationManager lança AuthenticationException)
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Map<String, Object>> credenciaisInvalidas(AuthenticationException e, HttpServletRequest request) {
-        log.warn("Falha de autenticação em {}: {}", request.getServletPath(), e.getMessage());
+        log.warn("Falha de autenticação em {}: {}", request.getRequestURI(), e.getMessage());
         return resposta(HttpStatus.UNAUTHORIZED, "Username ou senha inválidos", request);
     }
 
@@ -78,7 +78,7 @@ public class GlobalExceptionHandler {
         body.put("status", status.value());
         body.put("error", status.getReasonPhrase());
         body.put("message", mensagem);
-        body.put("path", request.getServletPath());
+        body.put("path", request.getRequestURI());
         return ResponseEntity.status(status).body(body);
     }
 }
