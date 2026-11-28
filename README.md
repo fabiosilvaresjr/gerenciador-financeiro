@@ -98,6 +98,9 @@ curl -X POST http://localhost:8080/api/auth/register \
 # 201 → {"id":1,"username":"teste","email":"teste@exemplo.com","roles":["ROLE_USER"]}
 ```
 
+No cadastro, o usuário já ganha as próprias categorias padrão: Alimentação, Moradia, Transporte, Saúde, Educação,
+Lazer, Salário e Outros. Elas são criadas na mesma transação do usuário: se uma parte falhar, nada é gravado.
+
 Fazer login e pegar o token (público):
 
 ```bash
@@ -112,7 +115,7 @@ Chamar um endpoint protegido com o token:
 ```bash
 TOKEN=eyJ...   # o valor de "token" da resposta acima
 curl http://localhost:8080/api/categorias -H "Authorization: Bearer $TOKEN"
-# 200 → []   (sem o header: 401)
+# 200 → [{"id":1,"nome":"Alimentação"}, ...]   (as 8 categorias padrão; sem o header: 401)
 ```
 
 Senha errada no login também retorna `401`.
@@ -193,6 +196,9 @@ O que é coberto (`src/test/java/.../controller/`):
 - `IsolamentoIntegracaoTest`: o usuário B não vê os dados do usuário A na listagem e recebe 404 ao ler, alterar ou
   apagar a categoria ou a transação de A, ou ao usar a categoria de A numa transação. Depois de cada tentativa, o teste
   confere com o token de A que os dados dele continuam iguais.
+- `CategoriasPadraoIntegracaoTest`: o cadastro cria as 8 categorias padrão, uma cópia para cada usuário, que podem ser
+  usadas em transações; um cadastro recusado (409) não cria categorias; e, se a criação das categorias falhar
+  (simulada com `@MockitoSpyBean`), o usuário também não é gravado (rollback).
 
 A configuração comum (container, propriedades, limpeza das tabelas antes de cada teste e atalhos como
 `registrarELogar`) fica em `IntegracaoTestBase`.
@@ -211,14 +217,14 @@ código-fonte, com as linhas cobertas em verde, as não cobertas em vermelho e o
 Na mesma pasta ficam `jacoco.xml` e `jacoco.csv`, para ferramentas. O código gerado pelo Lombok fica fora da conta
 (`lombok.config`).
 
-Números atuais (2026-11-27, 42 testes):
+Números atuais (2026-11-27, 47 testes):
 
 | Métrica | Cobertura |
 |---|---|
-| Linhas | 96% (215/224) |
+| Linhas | 96% (223/232) |
 | Branches | 64% (14/22) |
-| Métodos | 95% (73/77) |
-| Instruções | 96% (959/1003) |
+| Métodos | 95% (76/80) |
+| Instruções | 96% (998/1042) |
 
 No GitHub Actions o mesmo relatório é publicado como artefato `relatorio-jacoco` em cada execução do workflow
 (aba **Actions** → execução → **Artifacts**).

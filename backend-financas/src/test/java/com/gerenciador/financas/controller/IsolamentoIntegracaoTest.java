@@ -1,12 +1,15 @@
 package com.gerenciador.financas.controller;
 
 import com.gerenciador.financas.IntegracaoTestBase;
+import com.gerenciador.financas.service.CategoriaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -45,15 +48,20 @@ class IsolamentoIntegracaoTest extends IntegracaoTestBase {
 
     @Test
     void listagemDeCategoriasMostraSoAsDoProprioUsuario() throws Exception {
+        // Cada um vê as próprias 8 categorias padrão + a que criou (as padrão do outro não aparecem).
+        int esperado = CategoriaService.CATEGORIAS_PADRAO.size() + 1;
+
         mockMvc.perform(get("/api/categorias").header("Authorization", authBruno))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].nome").value("Mercado do Bruno"));
+                .andExpect(jsonPath("$", hasSize(esperado)))
+                .andExpect(jsonPath("$[*].nome", hasItem("Mercado do Bruno")))
+                .andExpect(jsonPath("$[*].nome", not(hasItem("Mercado da Ana"))));
 
         mockMvc.perform(get("/api/categorias").header("Authorization", authAna))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].nome").value("Mercado da Ana"));
+                .andExpect(jsonPath("$", hasSize(esperado)))
+                .andExpect(jsonPath("$[*].nome", hasItem("Mercado da Ana")))
+                .andExpect(jsonPath("$[*].nome", not(hasItem("Mercado do Bruno"))));
     }
 
     @Test

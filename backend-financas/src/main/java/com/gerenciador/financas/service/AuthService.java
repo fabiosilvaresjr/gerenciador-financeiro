@@ -33,6 +33,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
+    private final CategoriaService categoriaService;
     private final RefreshTokenService refreshTokenService;
 
     @Transactional
@@ -54,7 +55,11 @@ public class AuthService {
                 .roles(Set.of(roleUser))
                 .build();
 
-        return UsuarioResponseDTO.fromEntity(usuarioRepository.save(usuario));
+        Usuario salvo = usuarioRepository.save(usuario);
+        // Mesma transação deste método: se criar as categorias falhar, o usuário também não é gravado.
+        categoriaService.criarCategoriasPadrao(salvo);
+
+        return UsuarioResponseDTO.fromEntity(salvo);
     }
 
     public JwtResponseDTO login(LoginRequestDTO dto) {
