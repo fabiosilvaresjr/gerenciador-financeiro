@@ -3,6 +3,7 @@ package com.gerenciador.financas.service;
 import com.gerenciador.financas.config.JwtUtils;
 import com.gerenciador.financas.dto.auth.JwtResponseDTO;
 import com.gerenciador.financas.dto.auth.LoginRequestDTO;
+import com.gerenciador.financas.dto.auth.RefreshTokenRequestDTO;
 import com.gerenciador.financas.dto.auth.RegisterRequestDTO;
 import com.gerenciador.financas.dto.auth.UsuarioResponseDTO;
 import com.gerenciador.financas.model.ERole;
@@ -32,6 +33,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
     public UsuarioResponseDTO registrar(RegisterRequestDTO dto) {
@@ -61,6 +63,23 @@ public class AuthService {
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         String token = jwtUtils.generateJwtToken(userDetails.getUsername());
-        return JwtResponseDTO.of(token, userDetails);
+        // Cada login abre uma sessão nova (família nova de refresh tokens).
+        String refreshToken = refreshTokenService.criarSessao(userDetails.getId());
+        return JwtResponseDTO.of(token, refreshToken, userDetails);
+    }
+
+    /** Troca um refresh token por um access token novo e um refresh token novo (rotação). */
+    public JwtResponseDTO refresh(RefreshTokenRequestDTO dto) {
+        RefreshTokenService.TokenRotacionado rotacionado = refreshTokenService.rotacionar(dto.getRefreshToken());
+        String token = jwtUtils.generateJwtToken(rotacionado.usuario().getUsername());
+        return JwtResponseDTO.of(token, rotacionado.refreshToken(), rotacionado.usuario());
+    }
+
+    /**
+     * Encerra a sessão do refresh token. O access token já emitido continua valendo até vencer
+     * (no máximo 15 min), porque o filtro JWT não consulta o banco.
+     */
+    public void logout(RefreshTokenRequestDTO dto) {
+        refreshTokenService.revogarSessao(dto.getRefreshToken());
     }
 }

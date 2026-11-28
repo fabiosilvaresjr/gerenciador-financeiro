@@ -61,7 +61,7 @@ public abstract class IntegracaoTestBase {
     @BeforeEach
     void limparBanco() {
         // "roles" fica: é preenchida pela migration V2 e não muda nos testes.
-        jdbcTemplate.execute("TRUNCATE TABLE transacao, categoria, usuario_roles, usuarios RESTART IDENTITY");
+        jdbcTemplate.execute("TRUNCATE TABLE refresh_token, transacao, categoria, usuario_roles, usuarios RESTART IDENTITY");
     }
 
     // ---------- Atalhos usados pelos testes ----------

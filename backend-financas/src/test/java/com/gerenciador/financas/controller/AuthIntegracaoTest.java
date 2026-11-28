@@ -85,6 +85,7 @@ class AuthIntegracaoTest extends IntegracaoTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").isNotEmpty())
                 .andExpect(jsonPath("$.tipo").value("Bearer"))
+                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
                 .andExpect(jsonPath("$.username").value("maria"));
     }
 

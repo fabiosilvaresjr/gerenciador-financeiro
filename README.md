@@ -18,7 +18,7 @@ Hoje existe só o back-end; o front-end Angular e o restante do MVP estão plane
 docker-compose.yml         # PostgreSQL 16 (banco "financas")
 backend-financas/          # API Spring Boot
   .env.example             # modelo do .env (segredos locais, fora do Git)
-  src/main/resources/db/migration/   # migrations Flyway (V1 a V3)
+  src/main/resources/db/migration/   # migrations Flyway (V1 a V4)
 ```
 
 ## 1. Configurar o `.env`
@@ -104,7 +104,7 @@ Fazer login e pegar o token (público):
 curl -X POST http://localhost:8080/api/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"teste","password":"senha123"}'
-# 200 → {"token":"eyJ...","tipo":"Bearer","id":1,"username":"teste",...}
+# 200 → {"token":"eyJ...","tipo":"Bearer","refreshToken":"q3W...","id":1,"username":"teste",...}
 ```
 
 Chamar um endpoint protegido com o token:
@@ -115,7 +115,36 @@ curl http://localhost:8080/api/categorias -H "Authorization: Bearer $TOKEN"
 # 200 → []   (sem o header: 401)
 ```
 
-Senha errada no login também retorna `401`. O token expira em 24 h (`financas.app.jwtExpirationMs`).
+Senha errada no login também retorna `401`.
+
+### Renovar o token e sair
+
+O `token` (access token) vale **15 min** (`financas.app.jwtExpirationMs`). Para pegar um novo sem logar de novo,
+troque o `refreshToken`, que vale **7 dias** (`financas.app.refreshExpirationMs`):
+
+```bash
+curl -X POST http://localhost:8080/api/auth/refresh \
+  -H 'Content-Type: application/json' \
+  -d '{"refreshToken":"q3W..."}'
+# 200 → mesmo formato do login, com um token novo e um refreshToken novo
+```
+
+- Cada refresh token vale **uma vez**: o refresh devolve um novo, e o antigo deixa de funcionar (rotação).
+- Se um refresh token já usado for enviado de novo, a API entende que ele pode ter sido copiado e **encerra a sessão**:
+  todos os refresh tokens daquele login param de funcionar. As sessões de outros logins (outro aparelho) continuam.
+- Token desconhecido, vencido, já usado ou encerrado: sempre `401` com a mesma mensagem.
+- O banco guarda só o hash SHA-256 do refresh token, nunca o valor.
+
+Para sair, envie o refresh token ao logout (`204`, mesmo se o token não existir):
+
+```bash
+curl -X POST http://localhost:8080/api/auth/logout \
+  -H 'Content-Type: application/json' \
+  -d '{"refreshToken":"q3W..."}'
+```
+
+O logout encerra a sessão do refresh token. O access token já emitido continua valendo até vencer (no máximo 15 min),
+porque a API não consulta o banco para validar o JWT.
 
 ## Endpoints existentes
 
@@ -123,6 +152,8 @@ Senha errada no login também retorna `401`. O token expira em 24 h (`financas.a
 |---|---|---|
 | `POST` | `/api/auth/register` | público |
 | `POST` | `/api/auth/login` | público |
+| `POST` | `/api/auth/refresh` | público (recebe o refresh token) |
+| `POST` | `/api/auth/logout` | público (recebe o refresh token) |
 | `GET`, `POST` | `/api/categorias` | token |
 | `GET`, `PUT`, `DELETE` | `/api/categorias/{id}` | token |
 | `GET`, `POST` | `/api/transacoes` | token |
@@ -152,6 +183,9 @@ O que é coberto (`src/test/java/.../controller/`):
 
 - `AuthIntegracaoTest`: cadastro (201, 409 username/email repetido, 400 com a lista `campos`), login (200 com token,
   401 senha errada ou usuário inexistente) e acesso a rota protegida sem token, com token inválido e com token válido.
+- `RefreshTokenIntegracaoTest`: login com refresh token, só o hash no banco, validade de 15 min e de 7 dias, rotação,
+  reuso que encerra a sessão (sem afetar outra), refresh vencido ou desconhecido, logout (e sua idempotência), o refresh
+  da Ana gerando um token da Ana, e dois refreshes simultâneos com o mesmo token (só um funciona).
 - `FiltroJwtIntegracaoTest`: token expirado, token assinado com outra chave, token válido de um usuário que não existe
   mais e header `Authorization` sem o prefixo `Bearer` (token puro ou `Basic`): todos respondem 401 com o corpo JSON padrão.
 - `CategoriaIntegracaoTest` e `TransacaoIntegracaoTest`: CRUD completo, 404 para ID inexistente, 400 de validação,
