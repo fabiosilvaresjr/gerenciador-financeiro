@@ -41,8 +41,8 @@ public class TransacaoService {
 
     @Transactional
     public TransacaoResponseDTO criar(TransacaoRequestDTO dto, Long usuarioId) {
-        // Categoria de outro usuário → 404, igual a uma categoria que não existe.
-        Categoria categoria = categoriaService.buscarDoUsuario(dto.getCategoriaId(), usuarioId);
+        // Sem categoria → "Sem categoria"; de outro usuário → 404; arquivada → 409.
+        Categoria categoria = categoriaService.buscarParaTransacao(dto.getCategoriaId(), usuarioId);
 
         Transacao transacao = Transacao.builder()
                 .descricao(dto.getDescricao())
@@ -60,7 +60,7 @@ public class TransacaoService {
     @Transactional
     public TransacaoResponseDTO atualizar(Long id, TransacaoRequestDTO dto, Long usuarioId) {
         Transacao transacao = buscarDoUsuario(id, usuarioId);
-        Categoria categoria = categoriaService.buscarDoUsuario(dto.getCategoriaId(), usuarioId);
+        Categoria categoria = categoriaDaAtualizacao(transacao, dto.getCategoriaId(), usuarioId);
 
         transacao.setDescricao(dto.getDescricao());
         transacao.setValor(dto.getValor());
@@ -75,6 +75,19 @@ public class TransacaoService {
     @Transactional
     public void deletar(Long id, Long usuarioId) {
         transacaoRepository.delete(buscarDoUsuario(id, usuarioId));
+    }
+
+    /**
+     * Uma transação antiga pode continuar na categoria dela mesmo que ela tenha sido arquivada
+     * (senão não daria para corrigir o valor ou a descrição). A regra do arquivamento só vale
+     * para a categoria nova, quando a transação muda de categoria.
+     */
+    private Categoria categoriaDaAtualizacao(Transacao transacao, Long categoriaId, Long usuarioId) {
+        Categoria atual = transacao.getCategoria();
+        if (categoriaId != null && categoriaId.equals(atual.getId())) {
+            return atual;
+        }
+        return categoriaService.buscarParaTransacao(categoriaId, usuarioId);
     }
 
     private Transacao buscarDoUsuario(Long id, Long usuarioId) {

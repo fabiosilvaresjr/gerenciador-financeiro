@@ -1,7 +1,6 @@
 package com.gerenciador.financas.controller;
 
 import com.gerenciador.financas.IntegracaoTestBase;
-import com.gerenciador.financas.service.CategoriaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -49,7 +48,7 @@ class IsolamentoIntegracaoTest extends IntegracaoTestBase {
     @Test
     void listagemDeCategoriasMostraSoAsDoProprioUsuario() throws Exception {
         // Cada um vê as próprias 8 categorias padrão + a que criou (as padrão do outro não aparecem).
-        int esperado = CategoriaService.CATEGORIAS_PADRAO.size() + 1;
+        int esperado = CATEGORIAS_DO_CADASTRO + 1;
 
         mockMvc.perform(get("/api/categorias").header("Authorization", authBruno))
                 .andExpect(status().isOk())

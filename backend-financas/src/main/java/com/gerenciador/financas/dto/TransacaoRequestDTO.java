@@ -33,6 +33,6 @@ public class TransacaoRequestDTO {
     @NotNull(message = "O tipo da transação é obrigatório (RECEITA ou DESPESA)")
     private TipoTransacao tipo;
 
-    @NotNull(message = "O ID da categoria é obrigatório")
+    // Opcional: sem categoria, a transação vai para a "Sem categoria" do usuário.
     private Long categoriaId;
 }
