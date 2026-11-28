@@ -18,7 +18,7 @@ Hoje existe só o back-end; o front-end Angular e o restante do MVP estão plane
 docker-compose.yml         # PostgreSQL 16 (banco "financas")
 backend-financas/          # API Spring Boot
   .env.example             # modelo do .env (segredos locais, fora do Git)
-  src/main/resources/db/migration/   # migrations Flyway (V1 a V4)
+  src/main/resources/db/migration/   # migrations Flyway (V1 a V5)
 ```
 
 ## 1. Configurar o `.env`
@@ -83,6 +83,8 @@ A API sobe em `http://localhost:8080`. O Flyway aplica as migrations na primeira
 
 > A migration V3 dá um dono (`usuario_id`) a categorias e transações e, para isso, **apaga as categorias e
 > transações que já existiam** no banco (eram só dados de teste). Os usuários continuam.
+>
+> A migration V5 não apaga nada: cria a categoria "Sem categoria" de cada usuário que já existe.
 
 > Se aparecer `class file version 65.0 ... up to 61.0`, o `java` do terminal não é o 21. Rode com
 > `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./mvnw spring-boot:run` (ajuste o caminho do seu JDK 21).
@@ -99,7 +101,8 @@ curl -X POST http://localhost:8080/api/auth/register \
 ```
 
 No cadastro, o usuário já ganha as próprias categorias padrão: Alimentação, Moradia, Transporte, Saúde, Educação,
-Lazer, Salário e Outros. Elas são criadas na mesma transação do usuário: se uma parte falhar, nada é gravado.
+Lazer, Salário e Outros, além da "Sem categoria" (ver [Arquivar categoria e "Sem categoria"](#arquivar-categoria-e-sem-categoria)).
+Elas são criadas na mesma transação do usuário: se uma parte falhar, nada é gravado.
 
 Fazer login e pegar o token (público):
 
@@ -115,7 +118,7 @@ Chamar um endpoint protegido com o token:
 ```bash
 TOKEN=eyJ...   # o valor de "token" da resposta acima
 curl http://localhost:8080/api/categorias -H "Authorization: Bearer $TOKEN"
-# 200 → [{"id":1,"nome":"Alimentação"}, ...]   (as 8 categorias padrão; sem o header: 401)
+# 200 → [{"id":1,"nome":"Alimentação","arquivada":false,"semCategoria":false}, ...]   (as 9 do cadastro; sem o header: 401)
 ```
 
 Senha errada no login também retorna `401`.
@@ -157,14 +160,34 @@ porque a API não consulta o banco para validar o JWT.
 | `POST` | `/api/auth/login` | público |
 | `POST` | `/api/auth/refresh` | público (recebe o refresh token) |
 | `POST` | `/api/auth/logout` | público (recebe o refresh token) |
-| `GET`, `POST` | `/api/categorias` | token |
+| `GET`, `POST` | `/api/categorias` | token (`?incluirArquivadas=true` lista também as arquivadas) |
 | `GET`, `PUT`, `DELETE` | `/api/categorias/{id}` | token |
+| `PATCH` | `/api/categorias/{id}/arquivar` e `/desarquivar` | token |
 | `GET`, `POST` | `/api/transacoes` | token |
 | `GET`, `PUT`, `DELETE` | `/api/transacoes/{id}` | token |
 
 Categorias e transações pertencem ao usuário do token: cada um só lista, lê, altera e apaga os próprios dados.
 O ID de outro usuário responde `404`, igual a um ID que não existe. A categoria de uma transação também tem
 que ser do mesmo usuário (senão, `404`).
+
+### Arquivar categoria e "Sem categoria"
+
+- **Arquivar** (`PATCH /api/categorias/{id}/arquivar`, 200) tira a categoria da listagem padrão e impede que ela seja
+  usada em transações novas (`409`). As transações antigas continuam com ela e podem ser editadas sem trocar de
+  categoria. `PATCH .../desarquivar` desfaz. Arquivar duas vezes não é erro.
+- **Excluir** continua só para categoria sem transações. Com transações, responde `409` sugerindo arquivar.
+- **"Sem categoria":** todo usuário tem uma (campo `semCategoria: true`). Uma transação criada ou editada sem
+  `categoriaId` vai para ela. Ela não pode ser arquivada, renomeada nem excluída (`409`).
+
+```bash
+curl -X PATCH http://localhost:8080/api/categorias/1/arquivar -H "Authorization: Bearer $TOKEN"
+# 200 → {"id":1,"nome":"Alimentação","arquivada":true,"semCategoria":false}
+
+curl -X POST http://localhost:8080/api/transacoes -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"descricao":"Pix","valor":20.00,"data":"2026-11-28","tipo":"DESPESA"}'
+# 201 → {..., "categoria":{"id":9,"nome":"Sem categoria","arquivada":false,"semCategoria":true}}
+```
 
 ## Testes
 
@@ -196,9 +219,16 @@ O que é coberto (`src/test/java/.../controller/`):
 - `IsolamentoIntegracaoTest`: o usuário B não vê os dados do usuário A na listagem e recebe 404 ao ler, alterar ou
   apagar a categoria ou a transação de A, ou ao usar a categoria de A numa transação. Depois de cada tentativa, o teste
   confere com o token de A que os dados dele continuam iguais.
-- `CategoriasPadraoIntegracaoTest`: o cadastro cria as 8 categorias padrão, uma cópia para cada usuário, que podem ser
+- `CategoriasPadraoIntegracaoTest`: o cadastro cria as 8 categorias padrão e a "Sem categoria", uma cópia para cada usuário, que podem ser
   usadas em transações; um cadastro recusado (409) não cria categorias; e, se a criação das categorias falhar
   (simulada com `@MockitoSpyBean`), o usuário também não é gravado (rollback).
+- `ArquivarCategoriaIntegracaoTest`: arquivar e desarquivar (inclusive duas vezes e de outro usuário, que dá 404), a
+  categoria arquivada fora da listagem padrão e dentro da `?incluirArquivadas=true`, `409` ao usá-la numa transação
+  nova ou ao mover uma transação para ela, e a transação antiga que continua com ela e pode ser editada.
+- `SemCategoriaIntegracaoTest`: transação sem `categoriaId` vai para a "Sem categoria" do próprio usuário; ela não pode
+  ser arquivada, renomeada nem excluída; e o banco recusa uma segunda "Sem categoria" ou arquivá-la direto no SQL.
+- `MigracaoV5Test`: aplica as migrations até a V4 num banco separado, grava usuários e dados "antigos" e aí aplica a
+  V5, conferindo que cada usuário ganhou a sua "Sem categoria" e que nada foi arquivado ou perdido.
 
 A configuração comum (container, propriedades, limpeza das tabelas antes de cada teste e atalhos como
 `registrarELogar`) fica em `IntegracaoTestBase`.

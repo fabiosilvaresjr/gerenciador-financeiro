@@ -1,5 +1,6 @@
 package com.gerenciador.financas;
 
+import com.gerenciador.financas.service.CategoriaService;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +51,9 @@ public abstract class IntegracaoTestBase {
         registry.add("financas.app.jwtSecret", () -> "segredo-de-teste-com-pelo-menos-256-bits-0123456789");
         registry.add("spring.jpa.show-sql", () -> "false");
     }
+
+    // Quantas categorias todo usuário ganha no cadastro: as padrão + a "Sem categoria".
+    protected static final int CATEGORIAS_DO_CADASTRO = CategoriaService.CATEGORIAS_PADRAO.size() + 1;
 
     @Autowired
     protected MockMvc mockMvc;

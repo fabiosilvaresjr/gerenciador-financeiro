@@ -22,9 +22,12 @@ public class CategoriaController {
 
     private final CategoriaService categoriaService;
 
+    // GET /api/categorias → só as ativas; GET /api/categorias?incluirArquivadas=true → todas.
     @GetMapping
-    public ResponseEntity<List<CategoriaResponseDTO>> listar(@AuthenticationPrincipal UserDetailsImpl usuario) {
-        return ResponseEntity.ok(categoriaService.listar(usuario.getId()));
+    public ResponseEntity<List<CategoriaResponseDTO>> listar(
+            @RequestParam(defaultValue = "false") boolean incluirArquivadas,
+            @AuthenticationPrincipal UserDetailsImpl usuario) {
+        return ResponseEntity.ok(categoriaService.listar(usuario.getId(), incluirArquivadas));
     }
 
     @GetMapping("/{id}")
@@ -45,6 +48,19 @@ public class CategoriaController {
             @AuthenticationPrincipal UserDetailsImpl usuario) {
         CategoriaResponseDTO categoriaAtualizada = categoriaService.atualizar(id, dto, usuario.getId());
         return ResponseEntity.ok(categoriaAtualizada);
+    }
+
+    // PATCH: muda só uma parte da categoria (o estado "arquivada"), sem mandar o corpo inteiro.
+    @PatchMapping("/{id}/arquivar")
+    public ResponseEntity<CategoriaResponseDTO> arquivar(@PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl usuario) {
+        return ResponseEntity.ok(categoriaService.arquivar(id, usuario.getId()));
+    }
+
+    @PatchMapping("/{id}/desarquivar")
+    public ResponseEntity<CategoriaResponseDTO> desarquivar(@PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl usuario) {
+        return ResponseEntity.ok(categoriaService.desarquivar(id, usuario.getId()));
     }
 
     @DeleteMapping("/{id}")

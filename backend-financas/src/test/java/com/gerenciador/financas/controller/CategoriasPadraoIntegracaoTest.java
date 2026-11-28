@@ -12,6 +12,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,9 +39,13 @@ class CategoriasPadraoIntegracaoTest extends IntegracaoTestBase {
 
         mockMvc.perform(get("/api/categorias").header("Authorization", auth))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(8)))
+                .andExpect(jsonPath("$", hasSize(9)))
                 .andExpect(jsonPath("$[*].nome", containsInAnyOrder(
-                        "Alimentação", "Moradia", "Transporte", "Saúde", "Educação", "Lazer", "Salário", "Outros")));
+                        "Alimentação", "Moradia", "Transporte", "Saúde", "Educação", "Lazer", "Salário", "Outros",
+                        "Sem categoria")))
+                // Só a "Sem categoria" vem marcada, e nenhuma nasce arquivada.
+                .andExpect(jsonPath("$[?(@.semCategoria == true)].nome", contains("Sem categoria")))
+                .andExpect(jsonPath("$[?(@.arquivada == true)]", hasSize(0)));
     }
 
     @Test
@@ -48,10 +53,10 @@ class CategoriasPadraoIntegracaoTest extends IntegracaoTestBase {
         registrarELogar("ana");
         registrarELogar("bruno");
 
-        // Não são categorias compartilhadas: são 8 linhas para cada usuário.
+        // Não são categorias compartilhadas: são 9 linhas para cada usuário (8 padrão + "Sem categoria").
         Integer total = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM categoria", Integer.class);
         Integer donos = jdbcTemplate.queryForObject("SELECT COUNT(DISTINCT usuario_id) FROM categoria", Integer.class);
-        assertThat(total).isEqualTo(16);
+        assertThat(total).isEqualTo(18);
         assertThat(donos).isEqualTo(2);
     }
 
@@ -72,7 +77,7 @@ class CategoriasPadraoIntegracaoTest extends IntegracaoTestBase {
     void cadastroRecusadoNaoCriaCategorias() throws Exception {
         registrar("maria", "maria@exemplo.com", "senha123");
 
-        // Mesmo username: 409, e nenhuma categoria a mais além das 8 da primeira maria.
+        // Mesmo username: 409, e nenhuma categoria a mais além das 9 da primeira maria.
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -81,7 +86,7 @@ class CategoriasPadraoIntegracaoTest extends IntegracaoTestBase {
                 .andExpect(status().isConflict());
 
         Integer total = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM categoria", Integer.class);
-        assertThat(total).isEqualTo(8);
+        assertThat(total).isEqualTo(9);
     }
 
     @Test

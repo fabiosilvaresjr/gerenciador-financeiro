@@ -7,6 +7,7 @@ import org.springframework.http.MediaType;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -137,7 +138,8 @@ class TransacaoIntegracaoTest extends IntegracaoTestBase {
                 .andExpect(jsonPath("$.campos[*].campo", hasItem("valor")))
                 .andExpect(jsonPath("$.campos[*].campo", hasItem("data")))
                 .andExpect(jsonPath("$.campos[*].campo", hasItem("tipo")))
-                .andExpect(jsonPath("$.campos[*].campo", hasItem("categoriaId")))
+                // categoriaId não entra: é opcional (sem ela, a transação vai para a "Sem categoria").
+                .andExpect(jsonPath("$.campos[*].campo", not(hasItem("categoriaId"))))
                 .andExpect(jsonPath("$.campos[*].mensagem", hasItem("O valor da transação deve ser positivo")));
     }
 }

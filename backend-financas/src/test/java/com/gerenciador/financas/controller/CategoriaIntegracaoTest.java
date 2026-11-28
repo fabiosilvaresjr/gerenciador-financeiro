@@ -1,7 +1,6 @@
 package com.gerenciador.financas.controller;
 
 import com.gerenciador.financas.IntegracaoTestBase;
-import com.gerenciador.financas.service.CategoriaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -42,10 +41,10 @@ class CategoriaIntegracaoTest extends IntegracaoTestBase {
         criarCategoria(auth, "Mercado");
         criarCategoria(auth, "Viagem");
 
-        // As 8 categorias padrão do cadastro + as 2 criadas aqui.
+        // As categorias do cadastro (8 padrão + "Sem categoria") + as 2 criadas aqui.
         mockMvc.perform(get("/api/categorias").header("Authorization", auth))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(CategoriaService.CATEGORIAS_PADRAO.size() + 2)))
+                .andExpect(jsonPath("$", hasSize(CATEGORIAS_DO_CADASTRO + 2)))
                 .andExpect(jsonPath("$[*].nome", hasItems("Mercado", "Viagem")));
     }
 
