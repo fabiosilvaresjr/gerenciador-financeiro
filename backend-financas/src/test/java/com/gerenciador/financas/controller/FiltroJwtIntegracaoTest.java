@@ -67,7 +67,9 @@ class FiltroJwtIntegracaoTest extends IntegracaoTestBase {
 
         // Apaga a maria direto no banco (a API não tem exclusão de usuário). O token continua
         // com assinatura e data válidas, mas o filtro não encontra mais o usuário.
-        // Os dados dela saem antes, por causa das FKs (o cadastro pode ter criado categorias).
+        // Os dados dela saem antes, por causa das FKs (o cadastro pode ter criado categorias
+        // e o login criou um refresh token).
+        jdbcTemplate.update("DELETE FROM refresh_token WHERE usuario_id = (SELECT id FROM usuarios WHERE username = 'maria')");
         jdbcTemplate.update("DELETE FROM transacao WHERE usuario_id = (SELECT id FROM usuarios WHERE username = 'maria')");
         jdbcTemplate.update("DELETE FROM categoria WHERE usuario_id = (SELECT id FROM usuarios WHERE username = 'maria')");
         jdbcTemplate.update("DELETE FROM usuario_roles WHERE usuario_id = (SELECT id FROM usuarios WHERE username = 'maria')");
